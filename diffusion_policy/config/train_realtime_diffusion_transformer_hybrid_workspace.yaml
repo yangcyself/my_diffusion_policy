@@ -2,7 +2,7 @@ defaults:
   - _self_
   - task: lift_image_abs
 
-name: train_diffusion_transformer_hybrid
+name: train_realtime_diffusion_transformer_hybrid
 _target_: diffusion_policy.workspace.train_realtime_diffusion_transformer_hybrid_workspace.TrainRealtimeDiffusionTransformerHybridWorkspace
 
 task_name: ${task.name}
