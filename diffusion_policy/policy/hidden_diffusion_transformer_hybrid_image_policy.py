@@ -191,7 +191,7 @@ class HiddenDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         scheduler = self.noise_scheduler
         hidden = self.model.encode_trajectory(condition_data)
 
-        trajectory = torch.randn(
+        noisy_hidden = torch.randn(
             size=hidden.shape, 
             dtype=hidden.dtype,
             device=hidden.device,
@@ -202,20 +202,20 @@ class HiddenDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
 
         for t in scheduler.timesteps:
             # 1. apply conditioning
-            trajectory[condition_mask] = hidden[condition_mask]
+            noisy_hidden[condition_mask] = hidden[condition_mask]
 
             # 2. predict model output
-            model_output = model(trajectory, t, cond)
+            model_output = model(noisy_hidden, t, cond)
 
             # 3. compute previous image: x_t -> x_t-1
-            trajectory = scheduler.step(
-                model_output, t, trajectory, 
+            noisy_hidden = scheduler.step(
+                model_output, t, noisy_hidden, 
                 generator=generator,
                 **kwargs
                 ).prev_sample
         
         # finally make sure conditioning is enforced
-        trajectory = self.model.decode_trajectory(hidden)
+        trajectory = self.model.decode_trajectory(noisy_hidden)
         trajectory[condition_mask] = condition_data[condition_mask]        
 
         return trajectory

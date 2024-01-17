@@ -25,6 +25,7 @@ class HiddenTransformerForDiffusion(ModuleAttrMixin):
             n_cond_layers: int = 0
         ) -> None:
         super().__init__()
+        hidden_dim = 32
         assert input_dim == output_dim
         # compute number of tokens for main trunk and condition encoder
         if n_obs_steps is None:
@@ -41,7 +42,7 @@ class HiddenTransformerForDiffusion(ModuleAttrMixin):
             T_cond += n_obs_steps
 
         # input embedding stem
-        self.input_emb = nn.Linear(input_dim, n_emb)
+        self.input_emb = nn.Linear(hidden_dim, n_emb)
         self.pos_emb = nn.Parameter(torch.zeros(1, T, n_emb))
         self.drop = nn.Dropout(p_drop_emb)
 
@@ -138,8 +139,20 @@ class HiddenTransformerForDiffusion(ModuleAttrMixin):
 
         # decoder head
         self.ln_f = nn.LayerNorm(n_emb)
-        self.head = nn.Linear(n_emb, output_dim)
+        self.head = nn.Linear(n_emb, hidden_dim)
             
+        # from trajectory to hidden
+        self.traj2hidden = nn.Sequential(
+            nn.Linear(input_dim, 2 * n_emb),
+            nn.Mish(),
+            nn.Linear(2 * n_emb, hidden_dim)
+        )
+        self.hidden2traj = nn.Sequential(
+            nn.Linear(hidden_dim, 2 * n_emb),
+            nn.Mish(),
+            nn.Linear(2 * n_emb, output_dim)
+        )
+
         # constants
         self.T = T
         self.T_cond = T_cond
@@ -286,9 +299,9 @@ class HiddenTransformerForDiffusion(ModuleAttrMixin):
             timesteps = timesteps[None].to(sample.device)
         # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
         timesteps = timesteps.expand(sample.shape[0])
+        input_emb = self.input_emb(sample)
         time_emb = self.time_emb(timesteps).unsqueeze(1)
         # (B,1,n_emb)
-        input_emb = sample # the embedding is moved into encode traj
 
         if self.encoder_only:
             # BERT
@@ -334,19 +347,20 @@ class HiddenTransformerForDiffusion(ModuleAttrMixin):
                 memory_mask=self.memory_mask
             )
             # (B,T,n_emb)
+            x = self.ln_f(x)
+            x = self.head(x)
         return x
 
     def encode_trajectory(self, x):
         # process input
-        x = self.input_emb(x)
-        return x
+        return self.traj2hidden(x)
+        # return x
 
     def decode_trajectory(self, x):
         # head
-        x = self.ln_f(x)
-        x = self.head(x)
         # (B,T,n_out)
-        return x
+        return self.hidden2traj(x)
+        # return x
 
 
 def test():
