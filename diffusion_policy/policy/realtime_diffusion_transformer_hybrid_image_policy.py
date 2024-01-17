@@ -198,7 +198,7 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         if self._noisy_trajectory is None:
             # set step values
             scheduler.set_timesteps(self.num_inference_steps)
-            trajectory = torch.randn(
+            self._noisy_trajectory = torch.randn(
                 size=condition_data.shape, 
                 dtype=condition_data.dtype,
                 device=condition_data.device,
@@ -206,33 +206,29 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             t = scheduler.timesteps[0]
 
             # 1. apply conditioning
-            trajectory[condition_mask] = condition_data[condition_mask]
+            self._noisy_trajectory[condition_mask] = condition_data[condition_mask]
 
             # 2. predict model output
-            model_output = model(trajectory, t, cond)
+            model_output = model(self._noisy_trajectory, t, cond)
 
             # 3. compute previous image: x_t -> x_t-1
 
-            diffusion_res = scheduler.step(model_output, t, trajectory,
+            diffusion_res = scheduler.step(model_output, t, self._noisy_trajectory,
                 generator=generator,
                 **kwargs)
-            trajectory = diffusion_res.prev_sample
+            self._noisy_trajectory = diffusion_res.prev_sample
             self._diffusion_steps = diffusion_res.time_steps.flatten()
-            self._noisy_trajectory = trajectory
-        else:
-            trajectory = self._noisy_trajectory
-
 
         while(self._diffusion_steps[0] > 0):
             # 1. apply conditioning
-            trajectory[condition_mask] = condition_data[condition_mask]
+            self._noisy_trajectory[condition_mask] = condition_data[condition_mask]
 
             t = self._diffusion_steps[0] - 1
             # 2. predict model output
-            model_output = model(trajectory, t, cond)
+            model_output = model(self._noisy_trajectory, t, cond)
 
             # 3. compute previous image: x_t -> x_t-1
-            diffusion_res = scheduler.step(model_output, t, trajectory,
+            diffusion_res = scheduler.step(model_output, t, self._noisy_trajectory,
                 generator=generator,
                 **kwargs)
             self._noisy_trajectory = diffusion_res.prev_sample
@@ -241,10 +237,12 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         assert self._diffusion_steps[0] == 0, "diffusion is not finalized"
 
         # finally make sure conditioning is enforced
-        trajectory[condition_mask] = condition_data[condition_mask]        
+        self._noisy_trajectory[condition_mask] = condition_data[condition_mask]        
+
+        # shift forward
         self._diffusion_steps = self._diffusion_steps[1:] 
         self._noisy_trajectory = torch.cat([self._noisy_trajectory[:,1:], torch.randn_like(self._noisy_trajectory[:,:1])], dim=1)
-        return trajectory
+        return self._noisy_trajectory
 
 
     def predict_action(self, obs_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
