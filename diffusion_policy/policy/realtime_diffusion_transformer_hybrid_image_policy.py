@@ -42,7 +42,6 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             causal_attn=True,
             time_as_cond=True,
             obs_as_cond=True,
-            pred_action_steps_only=False,
             # parameters passed to step
             **kwargs):
         super().__init__()
@@ -173,7 +172,6 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         self.n_action_steps = n_action_steps
         self.n_obs_steps = n_obs_steps
         self.obs_as_cond = obs_as_cond
-        self.pred_action_steps_only = pred_action_steps_only
         self.kwargs = kwargs
 
         if num_inference_steps is None:
@@ -278,8 +276,6 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             # reshape back to B, To, Do
             cond = nobs_features.reshape(B, To, -1)
             shape = (B, T, Da)
-            if self.pred_action_steps_only:
-                shape = (B, self.n_action_steps, Da)
             cond_data = torch.zeros(size=shape, device=device, dtype=dtype)
             cond_mask = torch.zeros_like(cond_data, dtype=torch.bool)
         else:
@@ -308,12 +304,9 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         action_pred = self.normalizer['action'].unnormalize(naction_pred)
 
         # get action
-        if self.pred_action_steps_only:
-            action = action_pred
-        else:
-            start = To - 1
-            end = start + self.n_action_steps
-            action = action_pred[:,start:end]
+        start = To - 1
+        end = start + self.n_action_steps
+        action = action_pred[:,start:end]
         
         result = {
             'action': action,
@@ -362,10 +355,6 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             nobs_features = self.obs_encoder(this_nobs)
             # reshape back to B, T, Do
             cond = nobs_features.reshape(batch_size, To, -1)
-            if self.pred_action_steps_only:
-                start = To - 1
-                end = start + self.n_action_steps
-                trajectory = nactions[:,start:end]
         else:
             raise NotImplementedError()
             # reshape B, T, ... to B*T
@@ -376,10 +365,7 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             trajectory = torch.cat([nactions, nobs_features], dim=-1).detach()
 
         # generate impainting mask
-        if self.pred_action_steps_only:
-            condition_mask = torch.zeros_like(trajectory, dtype=torch.bool)
-        else:
-            condition_mask = self.mask_generator(trajectory.shape)
+        condition_mask = self.mask_generator(trajectory.shape)
 
         # Sample noise that we'll add to the images
         noise = torch.randn(trajectory.shape, device=trajectory.device)
