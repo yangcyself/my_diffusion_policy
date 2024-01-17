@@ -377,4 +377,10 @@ class HiddenDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         recon_loss0 = F.mse_loss(trajectory, recon_trajectory0, reduction='mean')
         recon_loss1 = F.mse_loss(trajectory, recon_trajectory1, reduction='mean')
 
-        return duffions_loss + 0.2 * recon_loss0 + recon_loss1
+        raw_losses = {
+            "duffions_loss": duffions_loss,
+            "recon_loss0": recon_loss0,
+            "recon_loss1": recon_loss1,
+        }
+
+        return duffions_loss + 0.2 * recon_loss0 + recon_loss1, raw_losses
