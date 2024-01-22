@@ -28,16 +28,16 @@ logging:
   group: null
   id: null
   mode: online
-  name: 2023.01.16-20.20.50_train_hidden_diffusion_transformer_hybrid_pusht_image
-  project: diffusion_policy_debug
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
+  project: diffusion_policy_pusht
   resume: true
   tags:
   - train_diffusion_transformer_hybrid
   - pusht_image
   - default
 multi_run:
-  run_dir: data/outputs/2023.01.16/20.20.50_train_hidden_diffusion_transformer_hybrid_pusht_image
-  wandb_name_base: 2023.01.16-20.20.50_train_hidden_diffusion_transformer_hybrid_pusht_image
+  run_dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
 n_action_steps: 8
 n_latency_steps: 0
 n_obs_steps: 2
