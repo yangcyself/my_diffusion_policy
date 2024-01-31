@@ -1,4 +1,4 @@
-_target_: diffusion_policy.workspace.train_diffusion_unet_hybrid_workspace.TrainDiffusionUnetHybridWorkspace
+_target_: diffusion_policy.workspace.train_realtime_diffusion_transformer_hybrid_workspace.TrainRealtimeDiffusionTransformerHybridWorkspace
 checkpoint:
   save_last_ckpt: true
   save_last_snapshot: false
@@ -22,7 +22,7 @@ ema:
   power: 0.75
   update_after_step: 0
 exp_name: default
-horizon: 16
+horizon: 10
 keypoint_visible_rate: 1.0
 logging:
   group: null
@@ -32,45 +32,41 @@ logging:
   project: diffusion_policy_can_mh
   resume: true
   tags:
-  - train_diffusion_unet_hybrid
+  - train_realtime_diffusion_transformer_hybrid
   - can_image
   - default
 multi_run:
   run_dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
   wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
-n_action_steps: 8
+n_action_steps: 1
 n_latency_steps: 0
-n_obs_steps: 2
-name: train_diffusion_unet_hybrid
-obs_as_global_cond: true
+n_obs_steps: ${dataset_obs_steps}
+name: realtime_diffusion_transformer_hybrid
+obs_as_cond: true
 optimizer:
-  _target_: torch.optim.AdamW
   betas:
+  - 0.9
   - 0.95
-  - 0.999
-  eps: 1.0e-08
-  lr: 0.0001
-  weight_decay: 1.0e-06
+  learning_rate: 0.0001
+  obs_encoder_weight_decay: 1.0e-06
+  transformer_weight_decay: 0.001
 past_action_visible: false
 policy:
-  _target_: diffusion_policy.policy.diffusion_unet_hybrid_image_policy.DiffusionUnetHybridImagePolicy
-  cond_predict_scale: true
+  _target_: diffusion_policy.policy.realtime_diffusion_transformer_hybrid_image_policy.RealtimeDiffusionTransformerHybridImagePolicy
+  causal_attn: true
   crop_shape:
   - 76
   - 76
-  diffusion_step_embed_dim: 128
-  down_dims:
-  - 512
-  - 1024
-  - 2048
   eval_fixed_crop: true
-  horizon: 16
-  kernel_size: 5
-  n_action_steps: 8
-  n_groups: 8
-  n_obs_steps: 2
+  horizon: ${horizon}
+  n_action_steps: ${n_action_steps}
+  n_cond_layers: 0
+  n_emb: 256
+  n_head: 4
+  n_layer: 8
+  n_obs_steps: ${n_obs_steps}
   noise_scheduler:
-    _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
+    _target_: diffusion_policy.model.diffusion.DDPMScheduler.DDPMScheduler
     beta_end: 0.02
     beta_schedule: squaredcos_cap_v2
     beta_start: 0.0001
@@ -78,9 +74,12 @@ policy:
     num_train_timesteps: 100
     prediction_type: epsilon
     variance_type: fixed_small
+    sequence_step: 10
   num_inference_steps: 10
-  obs_as_global_cond: true
+  obs_as_cond: true
   obs_encoder_group_norm: true
+  p_drop_attn: 0.3
+  p_drop_emb: 0.0
   shape_meta:
     action:
       shape:
@@ -107,6 +106,7 @@ policy:
       robot0_gripper_qpos:
         shape:
         - 2
+  time_as_cond: true
 shape_meta:
   action:
     shape:
@@ -139,7 +139,7 @@ task:
     _target_: diffusion_policy.dataset.robomimic_replay_image_dataset.RobomimicReplayImageDataset
     abs_action: true
     dataset_path: data/robomimic/datasets/can/mh/image_abs.hdf5
-    horizon: 16
+    horizon: 10
     n_obs_steps: 2
     pad_after: 7
     pad_before: 1
@@ -183,7 +183,7 @@ task:
     fps: 10
     max_steps: 500
     n_action_steps: 8
-    n_envs: null
+    n_envs: 28
     n_obs_steps: 2
     n_test: 50
     n_test_vis: 4
@@ -255,10 +255,10 @@ training:
   device: cuda:0
   gradient_accumulate_every: 1
   lr_scheduler: cosine
-  lr_warmup_steps: 500
+  lr_warmup_steps: 1000
   max_train_steps: null
   max_val_steps: null
-  num_epochs: 8000
+  num_epochs: 3500
   resume: true
   rollout_every: 50
   sample_every: 5
