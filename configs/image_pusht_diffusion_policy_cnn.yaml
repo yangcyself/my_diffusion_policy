@@ -29,7 +29,7 @@ logging:
   id: null
   mode: online
   name: 2023.01.16-20.20.06_train_diffusion_unet_hybrid_pusht_image
-  project: diffusion_policy_debug
+  project: diffusion_policy_pusht
   resume: true
   tags:
   - train_diffusion_unet_hybrid
@@ -78,7 +78,7 @@ policy:
     num_train_timesteps: 100
     prediction_type: epsilon
     variance_type: fixed_small
-  num_inference_steps: 100
+  num_inference_steps: 10
   obs_as_global_cond: true
   obs_encoder_group_norm: true
   shape_meta:
