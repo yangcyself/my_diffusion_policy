@@ -40,7 +40,7 @@ multi_run:
   wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
 n_action_steps: 1
 n_latency_steps: 0
-n_obs_steps: 2
+n_obs_steps: ${dataset_obs_steps}
 name: realtime_diffusion_unet_hybrid
 obs_as_global_cond: true
 optimizer:

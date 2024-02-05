@@ -40,7 +40,7 @@ multi_run:
   wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
 n_action_steps: 8
 n_latency_steps: 0
-n_obs_steps: 2
+n_obs_steps: ${dataset_obs_steps}
 name: train_diffusion_transformer_hybrid
 obs_as_cond: false
 optimizer:
@@ -58,7 +58,7 @@ policy:
   - 84
   - 84
   eval_fixed_crop: true
-  horizon: 10
+  horizon: ${horizon}
   n_action_steps: 8
   n_cond_layers: 0
   n_emb: 256
@@ -113,7 +113,7 @@ shape_meta:
 task:
   dataset:
     _target_: diffusion_policy.dataset.pusht_image_dataset.PushTImageDataset
-    horizon: 10
+    horizon: ${horizon}
     max_train_episodes: 90
     pad_after: 7
     pad_before: 1

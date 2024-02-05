@@ -40,7 +40,7 @@ multi_run:
   wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
 n_action_steps: 8
 n_latency_steps: 0
-n_obs_steps: 2
+n_obs_steps: ${dataset_obs_steps}
 name: train_diffusion_unet_hybrid
 obs_as_global_cond: true
 optimizer:
@@ -64,11 +64,11 @@ policy:
   - 1024
   - 2048
   eval_fixed_crop: true
-  horizon: 16
+  horizon: ${horizon}
   kernel_size: 5
-  n_action_steps: 8
+  n_action_steps: ${n_action_steps}
   n_groups: 8
-  n_obs_steps: 2
+  n_obs_steps: ${n_obs_steps}
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
     beta_end: 0.02
@@ -114,7 +114,7 @@ shape_meta:
 task:
   dataset:
     _target_: diffusion_policy.dataset.pusht_image_dataset.PushTImageDataset
-    horizon: 16
+    horizon: ${horizon}
     max_train_episodes: 90
     pad_after: 7
     pad_before: 1
@@ -126,9 +126,9 @@ task:
     fps: 10
     legacy_test: true
     max_steps: 300
-    n_action_steps: 8
+    n_action_steps: ${n_action_steps}
     n_envs: null
-    n_obs_steps: 2
+    n_obs_steps: ${n_obs_steps}
     n_test: 50
     n_test_vis: 4
     n_train: 6
