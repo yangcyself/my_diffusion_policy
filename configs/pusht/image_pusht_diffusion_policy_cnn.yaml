@@ -32,7 +32,7 @@ logging:
   project: diffusion_policy_pusht
   resume: true
   tags:
-  - train_diffusion_unet_hybrid
+  - ${name}
   - pusht_image
   - default
 multi_run:

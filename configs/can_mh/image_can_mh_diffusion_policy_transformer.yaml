@@ -32,7 +32,7 @@ logging:
   project: diffusion_policy_can_mh
   resume: true
   tags:
-  - train_diffusion_transformer_hybrid
+  - ${name}
   - can_image
   - default
 multi_run:

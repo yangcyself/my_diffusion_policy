@@ -32,7 +32,7 @@ logging:
   project: diffusion_policy_pusht
   resume: true
   tags:
-  - train_diffusion_transformer_hybrid
+  - ${name}
   - pusht_image
   - default
 multi_run:
@@ -41,7 +41,7 @@ multi_run:
 n_action_steps: 8
 n_latency_steps: 0
 n_obs_steps: ${dataset_obs_steps}
-name: train_diffusion_transformer_hybrid
+name: hidden_diffusion_transformer_hybrid
 obs_as_cond: false
 optimizer:
   betas:
