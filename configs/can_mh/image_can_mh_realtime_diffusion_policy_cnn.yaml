@@ -66,7 +66,7 @@ policy:
   eval_fixed_crop: true
   horizon: ${horizon}
   kernel_size: 5
-  n_action_steps: ${n_action_steps}
+  n_action_steps: ${eval:'${n_action_steps}+${n_latency_steps}'}
   n_groups: 8
   n_obs_steps: ${n_obs_steps}
   noise_scheduler:
@@ -142,8 +142,8 @@ task:
     dataset_path: data/robomimic/datasets/can/mh/image_abs.hdf5
     horizon: ${horizon}
     n_obs_steps: ${n_obs_steps}
-    pad_after: 7
-    pad_before: 1
+    pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}
+    pad_after: ${eval:'${horizon}-1'}
     rotation_rep: rotation_6d
     seed: 42
     shape_meta:
