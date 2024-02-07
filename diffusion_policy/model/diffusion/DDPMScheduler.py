@@ -382,8 +382,9 @@ class DDPMScheduler(ConfigMixin):
         # convert from int to torch tensor
         timesteps = timesteps.to(device=device).unsqueeze(1).repeat(1, seq_len) # (batch_size, sequence_length)
         timesteps += (self.config.sequence_step * torch.arange(seq_len).float()).to(device).long()
+        timestep_mask = timesteps < self.config.num_train_timesteps
         timesteps = timesteps.clamp(0, self.config.num_train_timesteps - 1)
-        return timesteps
+        return timesteps, timestep_mask
 
     def _get_variance(self, t, prev_t, predicted_variance=None, variance_type=None):
         
@@ -491,10 +492,10 @@ class DDPMScheduler(ConfigMixin):
 
         if self.config.sequence_step is not None:
             t = torch.tensor([t]*sample.shape[0])
-            timesteps = self.construct_timesteps(t, sample.shape[1], sample.device) # (batch_size, sequence_length)
+            timesteps, _ = self.construct_timesteps(t, sample.shape[1], sample.device) # (batch_size, sequence_length)
             flatten_axis = 1
             prev_t = torch.tensor([prev_t]*sample.shape[0])
-            prev_timesteps = self.construct_timesteps(prev_t, sample.shape[1], sample.device) # (batch_size, sequence_length)
+            prev_timesteps, _ = self.construct_timesteps(prev_t, sample.shape[1], sample.device) # (batch_size, sequence_length)
         else:
             timesteps = torch.tensor([t], device=sample.device)
             flatten_axis = 0
@@ -593,7 +594,7 @@ class DDPMScheduler(ConfigMixin):
         timesteps = timesteps.to(original_samples.device)
         flatten_axis = 0
         if self.config.sequence_step is not None:
-            timesteps = self.construct_timesteps(timesteps,original_samples.shape[1], original_samples.device)
+            timesteps, _ = self.construct_timesteps(timesteps,original_samples.shape[1], original_samples.device)
             flatten_axis = 1
         
         sqrt_alpha_prod = alphas_cumprod[timesteps] ** 0.5

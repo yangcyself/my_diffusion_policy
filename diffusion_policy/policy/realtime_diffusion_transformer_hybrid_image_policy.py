@@ -223,7 +223,7 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             # 1. apply conditioning
             self._noisy_trajectory[condition_mask] = condition_data[condition_mask]
 
-            t = self._diffusion_steps[0] - 1
+            t = scheduler.previous_timestep(self._diffusion_steps[0])
             # 2. predict model output
             model_output = model(self._noisy_trajectory, t, cond)
 
@@ -378,8 +378,12 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         noisy_trajectory = self.noise_scheduler.add_noise(
             trajectory, noise, timesteps)
 
+        _timestep_expanded, _timestep_mask = self.noise_scheduler.construct_timesteps(timesteps, 
+            trajectory.shape[1], trajectory.device
+        )
+
         # compute loss mask
-        loss_mask = ~condition_mask
+        loss_mask = (~condition_mask) & _timestep_mask.unsqueeze(-1)
 
         # apply conditioning
         noisy_trajectory[condition_mask] = trajectory[condition_mask]
