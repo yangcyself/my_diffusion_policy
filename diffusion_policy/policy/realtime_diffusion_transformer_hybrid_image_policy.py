@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, reduce
 from diffusion_policy.model.diffusion.DDPMScheduler import DDPMScheduler
+import warnings
 
 from diffusion_policy.model.common.normalizer import LinearNormalizer
 from diffusion_policy.policy.base_image_policy import BaseImagePolicy
@@ -42,6 +43,8 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             causal_attn=True,
             time_as_cond=True,
             obs_as_cond=True,
+            # train
+            diffusion_warm_up=False,
             # parameters passed to step
             **kwargs):
         super().__init__()
@@ -172,12 +175,23 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         self.n_action_steps = n_action_steps
         self.n_obs_steps = n_obs_steps
         self.obs_as_cond = obs_as_cond
+        self.diffusion_warm_up = diffusion_warm_up
         self.kwargs = kwargs
 
         if num_inference_steps is None:
             num_inference_steps = noise_scheduler.config.num_train_timesteps
         self.num_inference_steps = num_inference_steps
-    
+
+        if (not self.horizon * noise_scheduler.config.sequence_step 
+                == noise_scheduler.config.num_train_timesteps
+            ):
+            warnings.warn("horizon, sequence_step and num_train_steps doesn't match")
+
+        if ((not self.horizon == num_inference_steps)
+                or (not num_inference_steps == noise_scheduler.config.num_train_timesteps)
+            ):
+            warnings.warn("bad num_inference_steps")
+        
     # ========= reset ============
     def reset(self):
         # raise NotImplementedError()
@@ -302,7 +316,7 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         action_pred = self.normalizer['action'].unnormalize(naction_pred)
 
         # get action
-        start = To - 1
+        start = 0
         end = start + self.n_action_steps
         action = action_pred[:,start:end]
         
@@ -337,11 +351,13 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
     def compute_loss(self, batch):
         # normalize input
         assert 'valid_mask' not in batch
+        To = self.n_obs_steps
         nobs = self.normalizer.normalize(batch['obs'])
-        nactions = self.normalizer['action'].normalize(batch['action'])
+        nactions = self.normalizer['action'].normalize(batch['action'])[:,To-1:, ...]
+        batch_indices = batch['indices']
         batch_size = nactions.shape[0]
         horizon = nactions.shape[1]
-        To = self.n_obs_steps
+        assert self.horizon == horizon
 
         # handle different ways of passing observation
         cond = None
@@ -369,10 +385,14 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         noise = torch.randn(trajectory.shape, device=trajectory.device)
         bsz = trajectory.shape[0]
         # Sample a random timestep for each image
-        timesteps = torch.randint(
-            0, self.noise_scheduler.config.num_train_timesteps, 
-            (bsz,), device=trajectory.device
-        ).long()
+        if self.diffusion_warm_up:
+            # batch_indices # buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx
+            raise NotImplementedError()
+        else:
+            timesteps = torch.randint(
+                0, self.noise_scheduler.config.num_train_timesteps, 
+                (bsz,), device=trajectory.device
+            ).long()
         # Add noise to the clean images according to the noise magnitude at each timestep
         # (this is the forward diffusion process)
         noisy_trajectory = self.noise_scheduler.add_noise(

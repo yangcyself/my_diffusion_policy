@@ -47,5 +47,6 @@ class BaseImageDataset(torch.utils.data.Dataset):
             obs: 
                 key: T, *
             action: T, Da
+            indices: buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx
         """
         raise NotImplementedError()

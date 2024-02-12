@@ -125,6 +125,7 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         data = self.sampler.sample_sequence(idx)
+        data['indices'] = self.sampler.indices[idx].copy()
         torch_data = dict_apply(data, torch.from_numpy)
         return torch_data
 

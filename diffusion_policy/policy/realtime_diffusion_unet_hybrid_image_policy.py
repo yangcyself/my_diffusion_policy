@@ -171,7 +171,16 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
         print("Diffusion params: %e" % sum(p.numel() for p in self.model.parameters()))
         print("Vision params: %e" % sum(p.numel() for p in self.obs_encoder.parameters()))
     
-    
+        if (not self.horizon * noise_scheduler.config.sequence_step 
+                == noise_scheduler.config.num_train_timesteps
+            ):
+            warnings.warn("horizon, sequence_step and num_train_steps doesn't match")
+
+        if ((not self.horizon == num_inference_steps)
+                or (not num_inference_steps == noise_scheduler.config.num_train_timesteps)
+            ):
+            warnings.warn("bad num_inference_steps")
+        
     # ========= reset ============
     def reset(self):
         # raise NotImplementedError()
@@ -295,7 +304,7 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
         action_pred = self.normalizer['action'].unnormalize(naction_pred)
 
         # get action
-        start = To - 1
+        start = 0
         end = start + self.n_action_steps
         action = action_pred[:,start:end]
         
@@ -312,10 +321,12 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
     def compute_loss(self, batch):
         # normalize input
         assert 'valid_mask' not in batch
+        To = self.n_obs_steps
         nobs = self.normalizer.normalize(batch['obs'])
-        nactions = self.normalizer['action'].normalize(batch['action'])
+        nactions = self.normalizer['action'].normalize(batch['action'])[:,To-1:, ...]
         batch_size = nactions.shape[0]
         horizon = nactions.shape[1]
+        assert self.horizon == horizon
 
         # handle different ways of passing observation
         local_cond = None

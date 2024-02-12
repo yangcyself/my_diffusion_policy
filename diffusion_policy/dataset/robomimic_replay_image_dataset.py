@@ -215,7 +215,8 @@ class RobomimicReplayImageDataset(BaseImageDataset):
 
         torch_data = {
             'obs': dict_apply(obs_dict, torch.from_numpy),
-            'action': torch.from_numpy(data['action'].astype(np.float32))
+            'action': torch.from_numpy(data['action'].astype(np.float32)),
+            'indices': torch.from_numpy(self.sampler.indices[idx].copy())
         }
         return torch_data
 

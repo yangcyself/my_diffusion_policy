@@ -514,7 +514,6 @@ class DDPMScheduler(ConfigMixin):
         # 1. compute alphas, betas
         alpha_prod_t = self.alphas_cumprod.to(sample)[timesteps]
         alpha_prod_t_prev = self.alphas_cumprod.to(sample)[prev_timesteps] 
-        alpha_prod_t_prev[prev_timesteps<0] = 1.0
 
         beta_prod_t = 1 - alpha_prod_t
         beta_prod_t_prev = 1 - alpha_prod_t_prev
