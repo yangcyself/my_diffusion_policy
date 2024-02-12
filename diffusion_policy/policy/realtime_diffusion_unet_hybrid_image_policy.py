@@ -36,6 +36,7 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
             cond_predict_scale=True,
             obs_encoder_group_norm=False,
             eval_fixed_crop=False,
+            diffusion_warm_up = False,
             # parameters passed to step
             **kwargs):
         super().__init__()
@@ -162,6 +163,7 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
         self.n_action_steps = n_action_steps
         self.n_obs_steps = n_obs_steps
         self.obs_as_global_cond = obs_as_global_cond
+        self.diffusion_warm_up = diffusion_warm_up
         self.kwargs = kwargs
 
         if num_inference_steps is None:
@@ -176,8 +178,8 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
             ):
             warnings.warn("horizon, sequence_step and num_train_steps doesn't match")
 
-        if ((not self.horizon == num_inference_steps)
-                or (not num_inference_steps == noise_scheduler.config.num_train_timesteps)
+        if (not ( self.horizon == num_inference_steps
+                or num_inference_steps == noise_scheduler.config.num_train_timesteps)
             ):
             warnings.warn("bad num_inference_steps")
         

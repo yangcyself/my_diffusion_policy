@@ -75,6 +75,7 @@ policy:
     prediction_type: epsilon
     variance_type: fixed_small
     sequence_step: 1
+  diffusion_warm_up: false
   num_inference_steps: 100
   obs_as_cond: true
   obs_encoder_group_norm: true
@@ -141,7 +142,7 @@ task:
     dataset_path: data/robomimic/datasets/can/mh/image_abs.hdf5
     horizon: ${horizon}
     n_obs_steps: ${n_obs_steps}
-    pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}
+    pad_before: ${eval:'${horizon}-1 if ${policy.diffusion_warm_up} else (${n_obs_steps}-1+${n_latency_steps})'}
     pad_after: ${eval:'${horizon}-1'}
     rotation_rep: rotation_6d
     seed: 42

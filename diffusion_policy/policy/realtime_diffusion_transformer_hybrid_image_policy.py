@@ -187,8 +187,8 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
             ):
             warnings.warn("horizon, sequence_step and num_train_steps doesn't match")
 
-        if ((not self.horizon == num_inference_steps)
-                or (not num_inference_steps == noise_scheduler.config.num_train_timesteps)
+        if (not ( self.horizon == num_inference_steps
+                or num_inference_steps == noise_scheduler.config.num_train_timesteps)
             ):
             warnings.warn("bad num_inference_steps")
         
@@ -353,8 +353,33 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         assert 'valid_mask' not in batch
         To = self.n_obs_steps
         nobs = self.normalizer.normalize(batch['obs'])
-        nactions = self.normalizer['action'].normalize(batch['action'])[:,To-1:, ...]
         batch_indices = batch['indices']
+        nactions = self.normalizer['action'].normalize(batch['action'])
+        bsz = nactions.shape[0]
+
+        # Sample a random timestep for each image
+        # We transform the front padding into diffusion timesteps to mimic the effect of diffusion warmup
+        if self.diffusion_warm_up: 
+            # batch_indices # buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx
+            timesteps = torch.randint(
+                0, self.noise_scheduler.config.sequence_step, (bsz,), device=nactions.device
+            ).long()
+            for i in range(bsz):
+                # Find index of the first non-padded element
+                sample_start_idx = batch_indices[i, 2] - To + 1
+                if(sample_start_idx > 0):
+                    # swap to make non-pad index to be the first element
+                    nactions[i, :-sample_start_idx] = nactions[i, sample_start_idx:].clone()
+                    for k in nobs.keys():
+                        nobs[k][i, :-sample_start_idx] = nobs[k][i, sample_start_idx:].clone()
+                    timesteps[i] += sample_start_idx*self.noise_scheduler.config.sequence_step
+        else:
+            timesteps = torch.randint(
+                0, self.noise_scheduler.config.num_train_timesteps, 
+                (bsz,), device=nactions.device
+            ).long()
+
+        nactions = nactions[:,To-1:, ...]
         batch_size = nactions.shape[0]
         horizon = nactions.shape[1]
         assert self.horizon == horizon
@@ -383,16 +408,7 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
 
         # Sample noise that we'll add to the images
         noise = torch.randn(trajectory.shape, device=trajectory.device)
-        bsz = trajectory.shape[0]
-        # Sample a random timestep for each image
-        if self.diffusion_warm_up:
-            # batch_indices # buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx
-            raise NotImplementedError()
-        else:
-            timesteps = torch.randint(
-                0, self.noise_scheduler.config.num_train_timesteps, 
-                (bsz,), device=trajectory.device
-            ).long()
+
         # Add noise to the clean images according to the noise magnitude at each timestep
         # (this is the forward diffusion process)
         noisy_trajectory = self.noise_scheduler.add_noise(
