@@ -114,6 +114,7 @@ class TrainRealtimeDiffusionUnetHybridWorkspace(BaseWorkspace):
         wandb_run = wandb.init(
             dir=str(self.output_dir),
             config=OmegaConf.to_container(cfg, resolve=True),
+            settings=wandb.Settings(code_dir="./diffusion_policy"),
             **cfg.logging
         )
         wandb.config.update(

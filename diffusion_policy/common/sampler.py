@@ -127,27 +127,34 @@ class SequenceSampler:
             # performance optimization, avoid small allocation if possible
             if key not in self.key_first_k:
                 sample = input_arr[buffer_start_idx:buffer_end_idx]
+                data = sample
+                if (sample_start_idx > 0) or (sample_end_idx < self.sequence_length):
+                    data = np.zeros(
+                        shape=(self.sequence_length,) + input_arr.shape[1:],
+                        dtype=input_arr.dtype)
+                    if sample_start_idx > 0:
+                        data[:sample_start_idx] = sample[0]
+                    if sample_end_idx < self.sequence_length:
+                        data[sample_end_idx:] = sample[-1]
+                    data[sample_start_idx:sample_end_idx] = sample
             else:
                 # performance optimization, only load used obs steps
                 n_data = buffer_end_idx - buffer_start_idx
-                k_data = min(self.key_first_k[key], n_data)
-                # fill value with Nan to catch bugs
-                # the non-loaded region should never be used
-                sample = np.full((n_data,) + input_arr.shape[1:], 
-                    fill_value=np.nan, dtype=input_arr.dtype)
-                try:
-                    sample[:k_data] = input_arr[buffer_start_idx:buffer_start_idx+k_data]
-                except Exception as e:
-                    import pdb; pdb.set_trace()
-            data = sample
-            if (sample_start_idx > 0) or (sample_end_idx < self.sequence_length):
-                data = np.zeros(
-                    shape=(self.sequence_length,) + input_arr.shape[1:],
-                    dtype=input_arr.dtype)
-                if sample_start_idx > 0:
+                # k_data = min(self.key_first_k[key], n_data)
+                k_data = self.key_first_k[key]
+                sample = input_arr[buffer_start_idx:buffer_start_idx+min(k_data,n_data)]
+                data = sample
+                if (k_data > sample_start_idx > 0):
+                    data = np.zeros(
+                        shape=(k_data,) + input_arr.shape[1:],
+                        dtype=input_arr.dtype)
                     data[:sample_start_idx] = sample[0]
-                if sample_end_idx < self.sequence_length:
-                    data[sample_end_idx:] = sample[-1]
-                data[sample_start_idx:sample_end_idx] = sample
+                    data[sample_start_idx:] = sample[:-sample_start_idx]
+                elif (sample_start_idx >= k_data):
+                    data = np.zeros(
+                        shape=(k_data,) + input_arr.shape[1:],
+                        dtype=input_arr.dtype)
+                    data[:] = sample[0]
+
             result[key] = data
         return result

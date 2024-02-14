@@ -330,6 +330,9 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
     def set_normalizer(self, normalizer: LinearNormalizer):
         self.normalizer.load_state_dict(normalizer.state_dict())
 
+    def set_dataset_sampler_key_first_k(self, key_first_k):
+        self.key_first_k = key_first_k
+
     def get_optimizer(
             self, 
             transformer_weight_decay: float, 
@@ -371,6 +374,8 @@ class RealtimeDiffusionTransformerHybridImagePolicy(BaseImagePolicy):
                     # swap to make non-pad index to be the first element
                     nactions[i, :-sample_start_idx] = nactions[i, sample_start_idx:].clone()
                     for k in nobs.keys():
+                        if k in self.key_first_k:
+                            continue
                         nobs[k][i, :-sample_start_idx] = nobs[k][i, sample_start_idx:].clone()
                     timesteps[i] += sample_start_idx*self.noise_scheduler.config.sequence_step
         else:

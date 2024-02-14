@@ -45,7 +45,7 @@ class BaseImageDataset(torch.utils.data.Dataset):
         """
         output:
             obs: 
-                key: T, *
+                key: [T or To], *
             action: T, Da
             indices: buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx
         """
