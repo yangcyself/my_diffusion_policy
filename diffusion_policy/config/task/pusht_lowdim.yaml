@@ -27,8 +27,8 @@ dataset:
   _target_: diffusion_policy.dataset.pusht_dataset.PushTLowdimDataset
   zarr_path: data/pusht/pusht_cchi_v7_replay.zarr
   horizon: ${horizon}
-  pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}
-  pad_after: ${eval:'${n_action_steps}-1'}
+  pad_before: ${eval:'${horizon}-1 if ${policy.diffusion_warm_up} else ${n_obs_steps}-1+${n_latency_steps}'}
+  pad_after: ${eval:'${horizon}-1 if "realtime" in "${name}" else ${n_action_steps}-1'}
   seed: 42
   val_ratio: 0.02
   max_train_episodes: 90

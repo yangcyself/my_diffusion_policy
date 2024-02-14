@@ -2,16 +2,16 @@ defaults:
   - _self_
   - task: lift_image_abs
 
-name: train_realtime_diffusion_transformer_hybrid
+name: realtime_diffusion_transformer_hybrid
 _target_: diffusion_policy.workspace.train_realtime_diffusion_transformer_hybrid_workspace.TrainRealtimeDiffusionTransformerHybridWorkspace
 
 task_name: ${task.name}
 shape_meta: ${task.shape_meta}
 exp_name: "default"
 
-horizon: 100
-n_obs_steps: 2
-n_action_steps: 100
+horizon: 20
+n_obs_steps: 1
+n_action_steps: 1
 n_latency_steps: 0
 dataset_obs_steps: ${n_obs_steps}
 past_action_visible: False
@@ -32,24 +32,24 @@ policy:
     variance_type: fixed_small # Yilun's paper uses fixed_small_log instead, but easy to cause Nan
     clip_sample: false # required when predict_epsilon=False
     prediction_type: epsilon # or sample
-    sequence_step: 1
+    sequence_step: 5
 
-
-  horizon: ${horizon}
+  diffusion_warm_up: false
+  horizon: ${eval:'${horizon} - ${n_obs_steps} + 1'}
   n_action_steps: ${eval:'${n_action_steps}+${n_latency_steps}'}
   n_obs_steps: ${n_obs_steps}
-  num_inference_steps: 100
+  num_inference_steps: ${policy.horizon}
 
   crop_shape: [76, 76]
   obs_encoder_group_norm: True
   eval_fixed_crop: True
 
-  n_layer: 8
+  n_layer: 2
   n_cond_layers: 0  # >0: use transformer encoder for cond, otherwise use MLP
-  n_head: 4
+  n_head: 8
   n_emb: 256
   p_drop_emb: 0.0
-  p_drop_attn: 0.3
+  p_drop_attn: 0.1
   causal_attn: True
   time_as_cond: True # if false, use BERT like encoder only arch, time as input
   obs_as_cond: ${obs_as_cond}

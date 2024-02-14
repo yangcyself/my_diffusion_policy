@@ -35,8 +35,8 @@ dataset:
   shape_meta: *shape_meta
   dataset_path: ${task.dataset_path}
   horizon: ${horizon}
-  pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}
-  pad_after: ${eval:'${n_action_steps}-1'}
+  pad_before: ${eval:'${horizon}-1 if ${policy.diffusion_warm_up} else ${n_obs_steps}-1+${n_latency_steps}'}
+  pad_after: ${eval:'${horizon}-1 if "realtime" in "${name}" else ${n_action_steps}-1'}
   n_obs_steps: ${dataset_obs_steps}
   n_latency_steps: ${n_latency_steps}
   use_cache: True
