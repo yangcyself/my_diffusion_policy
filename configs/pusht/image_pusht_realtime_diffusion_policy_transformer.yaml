@@ -137,6 +137,7 @@ task:
     past_action: false
     test_start_seed: 100000
     train_start_seed: 0
+    render_plans: true
   image_shape:
   - 3
   - 96

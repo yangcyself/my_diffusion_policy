@@ -35,7 +35,8 @@ class PushTImageRunner(BaseImageRunner):
             render_size=96,
             past_action=False,
             tqdm_interval_sec=5.0,
-            n_envs=None
+            n_envs=None,
+            render_plans=False
         ):
         super().__init__(output_dir)
         if n_envs is None:
@@ -141,6 +142,7 @@ class PushTImageRunner(BaseImageRunner):
         self.past_action = past_action
         self.max_steps = max_steps
         self.tqdm_interval_sec = tqdm_interval_sec
+        self.render_plans = render_plans
     
     def run(self, policy: BaseImagePolicy):
         device = policy.device
@@ -203,11 +205,14 @@ class PushTImageRunner(BaseImageRunner):
                     lambda x: x.detach().to('cpu').numpy())
 
                 action = np_action_dict['action']
+                action_pred = np_action_dict['action_pred']
 
                 # step env
                 obs, reward, done, info = env.step(action)
                 done = np.all(done)
                 past_action = action
+                if self.render_plans:
+                    env.set_attr("action_plan", list(action_pred), 2)
 
                 # update pbar
                 pbar.update(action.shape[1])

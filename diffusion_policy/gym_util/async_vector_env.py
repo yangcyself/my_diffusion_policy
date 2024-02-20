@@ -519,7 +519,7 @@ class AsyncVectorEnv(VectorEnv):
         return results
 
 
-    def set_attr(self, name: str, values):
+    def set_attr(self, name: str, values, depth=0):
         """Sets an attribute of the sub-environments.
 
         Args:
@@ -527,7 +527,7 @@ class AsyncVectorEnv(VectorEnv):
             values: Values of the property to be set to. If ``values`` is a list or
                 tuple, then it corresponds to the values for each individual
                 environment, otherwise a single value is set for all environments.
-
+            depth: the depth to go into the wrappers. If depth=1, it will set attr of env.env
         Raises:
             ValueError: Values must be a list or tuple with length equal to the number of environments.
             AlreadyPendingCallError: Calling `set_attr` while waiting for a pending call to complete.
@@ -550,7 +550,7 @@ class AsyncVectorEnv(VectorEnv):
             )
 
         for pipe, value in zip(self.parent_pipes, values):
-            pipe.send(("_setattr", (name, value)))
+            pipe.send(("_setattr", (name, depth, value)))
         _, successes = zip(*[pipe.recv() for pipe in self.parent_pipes])
         self._raise_if_errors(successes)
 
@@ -593,8 +593,11 @@ def _worker(index, env_fn, pipe, parent_pipe, shared_memory, error_queue):
                 else:
                     pipe.send((function, True))
             elif command == "_setattr":
-                name, value = data
-                setattr(env, name, value)
+                name, depth, value = data
+                d_env = env
+                for i in range(depth):
+                    d_env = d_env.env
+                setattr(d_env, name, value)
                 pipe.send((None, True))
 
             elif command == "_check_observation_space":
@@ -653,8 +656,11 @@ def _worker_shared_memory(index, env_fn, pipe, parent_pipe, shared_memory, error
                 else:
                     pipe.send((function, True))
             elif command == "_setattr":
-                name, value = data
-                setattr(env, name, value)
+                name, depth, value = data
+                d_env = env
+                for i in range(depth):
+                    d_env = d_env.env
+                setattr(d_env, name, value)
                 pipe.send((None, True))
             elif command == "_check_observation_space":
                 pipe.send((data == observation_space, True))

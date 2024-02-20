@@ -2,6 +2,7 @@ from gym import spaces
 from diffusion_policy.env.pusht.pusht_env import PushTEnv
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 
 class PushTImageEnv(PushTEnv):
     metadata = {"render.modes": ["rgb_array"], "video.frames_per_second": 10}
@@ -33,6 +34,7 @@ class PushTImageEnv(PushTEnv):
             )
         })
         self.render_cache = None
+        self.action_plan = None
     
     def _get_obs(self):
         img = super()._render_frame(mode='rgb_array')
@@ -53,6 +55,20 @@ class PushTImageEnv(PushTEnv):
             cv2.drawMarker(img, coord,
                 color=(255,0,0), markerType=cv2.MARKER_CROSS,
                 markerSize=marker_size, thickness=thickness)
+        
+        # draw action_plan
+        if self.action_plan is not None:
+            actions = np.array(self.action_plan)
+            coords = (actions / 512 * 96).astype(np.int32)
+            marker_size = int(8/96*self.render_size)
+            thickness = int(1/96*self.render_size)
+            cmap = plt.get_cmap('viridis')
+            n_markers = len(coords)
+            for i,c in enumerate(coords):
+                color = (np.array(cmap(i/n_markers))*255).astype(np.int32)
+                cv2.drawMarker(img, c,
+                    color=color.tolist(), markerType=cv2.MARKER_CROSS,
+                    markerSize=marker_size, thickness=thickness)
         self.render_cache = img
 
         return obs
