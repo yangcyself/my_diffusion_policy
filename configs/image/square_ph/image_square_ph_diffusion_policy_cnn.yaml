@@ -29,7 +29,7 @@ logging:
   id: null
   mode: online
   name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
-  project: diffusion_policy_square_ph
+  project: diffusion_policy_image_square_ph
   resume: true
   tags:
   - ${name}
