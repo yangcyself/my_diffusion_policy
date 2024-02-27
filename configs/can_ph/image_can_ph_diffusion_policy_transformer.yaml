@@ -28,20 +28,20 @@ logging:
   group: null
   id: null
   mode: online
-  name: 2023.01.04-04.00.54_train_diffusion_transformer_hybrid_can_image
-  project: diffusion_policy_debug
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
+  project: diffusion_policy_can_ph
   resume: true
   tags:
-  - train_diffusion_transformer_hybrid
+  - ${name}
   - can_image
   - default
 multi_run:
-  run_dir: data/outputs/2023.01.04/04.00.54_train_diffusion_transformer_hybrid_can_image
-  wandb_name_base: 2023.01.04-04.00.54_train_diffusion_transformer_hybrid_can_image
+  run_dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
 n_action_steps: 8
 n_latency_steps: 0
-n_obs_steps: 2
-name: train_diffusion_transformer_hybrid
+n_obs_steps: ${dataset_obs_steps}
+name: diffusion_transformer_hybrid
 obs_as_cond: true
 optimizer:
   betas:

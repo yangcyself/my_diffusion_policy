@@ -28,20 +28,20 @@ logging:
   group: null
   id: null
   mode: online
-  name: 2022.12.29-22.31.27_train_diffusion_unet_hybrid_lift_image
-  project: diffusion_policy_debug
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
+  project: diffusion_policy_lift_ph
   resume: true
   tags:
-  - train_diffusion_unet_hybrid
+  - ${name}
   - lift_image
   - default
 multi_run:
-  run_dir: data/outputs/2022.12.29/22.31.27_train_diffusion_unet_hybrid_lift_image
-  wandb_name_base: 2022.12.29-22.31.27_train_diffusion_unet_hybrid_lift_image
+  run_dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
 n_action_steps: 8
 n_latency_steps: 0
-n_obs_steps: 2
-name: train_diffusion_unet_hybrid
+n_obs_steps: ${dataset_obs_steps}
+name: diffusion_unet_hybrid
 obs_as_global_cond: true
 optimizer:
   _target_: torch.optim.AdamW
@@ -64,11 +64,11 @@ policy:
   - 1024
   - 2048
   eval_fixed_crop: true
-  horizon: 16
+  horizon: ${horizon}
   kernel_size: 5
-  n_action_steps: 8
+  n_action_steps: ${eval:'${n_action_steps}+${n_latency_steps}'}
   n_groups: 8
-  n_obs_steps: 2
+  n_obs_steps: ${n_obs_steps}
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
     beta_end: 0.02
@@ -139,10 +139,10 @@ task:
     _target_: diffusion_policy.dataset.robomimic_replay_image_dataset.RobomimicReplayImageDataset
     abs_action: true
     dataset_path: data/robomimic/datasets/lift/ph/image_abs.hdf5
-    horizon: 16
-    n_obs_steps: 2
-    pad_after: 7
-    pad_before: 1
+    horizon: ${horizon}
+    n_obs_steps: ${n_obs_steps}
+    pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}
+    pad_after: ${eval:'${n_action_steps}-1'}
     rotation_rep: rotation_6d
     seed: 42
     shape_meta:
@@ -182,7 +182,7 @@ task:
     dataset_path: data/robomimic/datasets/lift/ph/image_abs.hdf5
     fps: 10
     max_steps: 400
-    n_action_steps: 8
+    n_action_steps: ${n_action_steps}
     n_envs: 28
     n_obs_steps: 2
     n_test: 50
