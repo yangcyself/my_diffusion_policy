@@ -62,7 +62,7 @@ policy:
   n_action_steps: ${eval:'${n_action_steps}+${n_latency_steps}'}
   n_cond_layers: 0
   n_emb: 256
-  n_head: 4
+  n_head: 8
   n_layer: 2
   n_obs_steps: ${n_obs_steps}
   noise_scheduler:
