@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, reduce
 from diffusion_policy.model.diffusion.DDPMScheduler import DDPMScheduler
+import warnings
 
 from diffusion_policy.model.common.normalizer import LinearNormalizer
 from diffusion_policy.policy.base_image_policy import BaseImagePolicy
@@ -229,7 +230,7 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # 1. apply conditioning
             self._noisy_trajectory[condition_mask] = condition_data[condition_mask]
 
-            t = self._diffusion_steps[0] - 1
+            t = scheduler.previous_timestep(self._diffusion_steps[0])
             # 2. predict model output
             model_output = model(self._noisy_trajectory, t, 
                 local_cond=local_cond, global_cond=global_cond)
@@ -320,16 +321,47 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
     def set_normalizer(self, normalizer: LinearNormalizer):
         self.normalizer.load_state_dict(normalizer.state_dict())
 
+    def set_dataset_sampler_key_first_k(self, key_first_k):
+        self.key_first_k = key_first_k
+
     def compute_loss(self, batch):
         # normalize input
         assert 'valid_mask' not in batch
         To = self.n_obs_steps
         nobs = self.normalizer.normalize(batch['obs'])
-        nactions = self.normalizer['action'].normalize(batch['action'])[:,To-1:, ...]
+        batch_indices = batch['indices']
+        nactions = self.normalizer['action'].normalize(batch['action'])
         batch_size = nactions.shape[0]
         horizon = nactions.shape[1]
-        assert self.horizon == horizon
+        bsz = nactions.shape[0]
 
+        # Sample a random timestep for each image
+        # We transform the front padding into diffusion timesteps to mimic the effect of diffusion warmup
+        if self.diffusion_warm_up: 
+            # batch_indices # buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx
+            timesteps = torch.randint(
+                0, self.noise_scheduler.config.sequence_step, (bsz,), device=nactions.device
+            ).long()
+            for i in range(bsz):
+                # Find index of the first non-padded element
+                sample_start_idx = batch_indices[i, 2] - To + 1
+                if(sample_start_idx > 0):
+                    # swap to make non-pad index to be the first element
+                    nactions[i, :-sample_start_idx] = nactions[i, sample_start_idx:].clone()
+                    for k in nobs.keys():
+                        if k in self.key_first_k:
+                            continue
+                        nobs[k][i, :-sample_start_idx] = nobs[k][i, sample_start_idx:].clone()
+                    timesteps[i] += sample_start_idx*self.noise_scheduler.config.sequence_step
+        else:
+            timesteps = torch.randint(
+                0, self.noise_scheduler.config.num_train_timesteps, 
+                (bsz,), device=nactions.device
+            ).long()
+
+        nactions = nactions[:,To-1:, ...]
+
+        assert self.horizon == horizon
         # handle different ways of passing observation
         local_cond = None
         global_cond = None
@@ -357,19 +389,18 @@ class RealtimeDiffusionUnetHybridImagePolicy(BaseImagePolicy):
 
         # Sample noise that we'll add to the images
         noise = torch.randn(trajectory.shape, device=trajectory.device)
-        bsz = trajectory.shape[0]
-        # Sample a random timestep for each image
-        timesteps = torch.randint(
-            0, self.noise_scheduler.config.num_train_timesteps, 
-            (bsz,), device=trajectory.device
-        ).long()
+
         # Add noise to the clean images according to the noise magnitude at each timestep
         # (this is the forward diffusion process)
         noisy_trajectory = self.noise_scheduler.add_noise(
             trajectory, noise, timesteps)
-        
+
+        _timestep_expanded, _timestep_mask = self.noise_scheduler.construct_timesteps(timesteps, 
+            trajectory.shape[1], trajectory.device
+        )
+
         # compute loss mask
-        loss_mask = ~condition_mask
+        loss_mask = (~condition_mask) & _timestep_mask.unsqueeze(-1)
 
         # apply conditioning
         noisy_trajectory[condition_mask] = cond_data[condition_mask]

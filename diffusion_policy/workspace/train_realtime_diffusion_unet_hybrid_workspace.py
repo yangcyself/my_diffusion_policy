@@ -80,6 +80,7 @@ class TrainRealtimeDiffusionUnetHybridWorkspace(BaseWorkspace):
         val_dataloader = DataLoader(val_dataset, **cfg.val_dataloader)
 
         self.model.set_normalizer(normalizer)
+        self.model.set_dataset_sampler_key_first_k(dataset.sampler.key_first_k)
         if cfg.training.use_ema:
             self.ema_model.set_normalizer(normalizer)
 
