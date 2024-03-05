@@ -140,8 +140,8 @@ task:
     _target_: diffusion_policy.dataset.robomimic_replay_image_dataset.RobomimicReplayImageDataset
     abs_action: true
     dataset_path: data/robomimic/datasets/can/ph/image_abs.hdf5
-    horizon: 10
-    n_obs_steps: 2
+    horizon: ${horizon}
+    n_obs_steps: ${n_obs_steps}
     pad_before: ${eval:'${horizon}-1 if ${policy.diffusion_warm_up} else (${n_obs_steps}-1+${n_latency_steps})'}
     pad_after: ${eval:'${horizon}-1'}
     rotation_rep: rotation_6d
@@ -185,7 +185,7 @@ task:
     max_steps: 400
     n_action_steps: 8
     n_envs: 28
-    n_obs_steps: 2
+    n_obs_steps: ${n_obs_steps}
     n_test: 50
     n_test_vis: 4
     n_train: 6
